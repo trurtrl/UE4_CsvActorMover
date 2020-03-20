@@ -15,10 +15,11 @@
 	"IsExperimentalVersion": false,
 	"Installed": false,
 	"Modules": [
-		{
-			"Name": "CsvActorHandler",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
-		}
+    {
+      "Name": "CsvActorHandler",
+      "Type": "Runtime",
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [ "Win64", "Win32", "Android", "Linux", "Mac", "HoloLens", "Lumin" ]
+    }
 	]
 }
