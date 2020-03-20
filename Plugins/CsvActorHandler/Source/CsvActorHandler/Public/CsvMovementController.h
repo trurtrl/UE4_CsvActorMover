@@ -21,7 +21,7 @@ class CSVACTORHANDLER_API UCsvMovementController : public UObject
 public:
 
 	UFUNCTION(BlueprintCallable)
-	bool Init(AActor* Camera, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate);
+	bool Init(const FString& ActorTag, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate);
 
 	UFUNCTION(BlueprintCallable)
 	void Start(int32 Frequency, bool InLoop = true);

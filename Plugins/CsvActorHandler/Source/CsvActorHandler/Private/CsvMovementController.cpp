@@ -8,21 +8,32 @@
 #include "TimerManager.h"
 #include "CsvActorHandler/Private/CsvParser.h"
 #include "Runtime/Core/Public/HAL/RunnableThread.h"
+#include "Kismet/GameplayStatics.h"
 
 
-bool UCsvMovementController::Init(AActor* Camera, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate)
+bool UCsvMovementController::Init(const FString& ActorTag, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate)
 {
+	_camera = nullptr;
+	if (GetOuter())
+	{
+		TArray<AActor*> actors;
+		UGameplayStatics::GetAllActorsWithTag(GetOuter(), FName(*ActorTag), actors);
+		if (actors.Num())
+			_camera = actors[0];			
+	}
+
 	IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
-	if (!platformFile.FileExists(*FilePath) || !Camera)
+	if (!platformFile.FileExists(*FilePath) || !_camera)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("There is no camera with tag %s or the file %s doesn't exist"), *ActorTag, *FilePath)
 		return false;
+	}
 
 	FTimerManager& timermanager = GetOuter()->GetWorld()->GetTimerManager();
 	if (timermanager.IsTimerActive(_positionExracterHandle))
 		timermanager.ClearTimer(_positionExracterHandle);
 	KillParserThread();
 	_positions.Empty();
-
-	_camera = Camera;
 
 	IFileHandle* fileHandle = platformFile.OpenRead(*FilePath);
 
@@ -54,7 +65,7 @@ void UCsvMovementController::KillParserThread()
 
 void UCsvMovementController::Start(int32 Frequency, bool InLoop)
 {
-	if (Frequency > 0)
+	if (Frequency > 0 && GetOuter())
 	{
 		FTimerManager& timerManager = GetOuter()->GetWorld()->GetTimerManager();
 		float frequency = 1.0f / Frequency;
@@ -64,21 +75,24 @@ void UCsvMovementController::Start(int32 Frequency, bool InLoop)
 
 void UCsvMovementController::Stop()
 {
-	GetOuter()->GetWorld()->GetTimerManager().ClearTimer(_positionExracterHandle);
+	if (GetOuter())
+		GetOuter()->GetWorld()->GetTimerManager().ClearTimer(_positionExracterHandle);
 }
 
 void UCsvMovementController::Pause()
 {
-	GetOuter()->GetWorld()->GetTimerManager().PauseTimer(_positionExracterHandle);
+	if (GetOuter())
+		GetOuter()->GetWorld()->GetTimerManager().PauseTimer(_positionExracterHandle);
 }
 
 void UCsvMovementController::UnPause()
 {
-	GetOuter()->GetWorld()->GetTimerManager().UnPauseTimer(_positionExracterHandle);
+	if (GetOuter())
+		GetOuter()->GetWorld()->GetTimerManager().UnPauseTimer(_positionExracterHandle);
 }
 
 void UCsvMovementController::SetNewCameraPosition()
 {
-	if (_positions.Dequeue(_nextPosition))
+	if (_positions.Dequeue(_nextPosition) && _camera)
 		_camera->SetActorLocation(_nextPosition);
 }
