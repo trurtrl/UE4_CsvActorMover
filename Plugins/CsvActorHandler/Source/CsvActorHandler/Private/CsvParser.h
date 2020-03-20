@@ -4,7 +4,6 @@
 #include "Runtime/Core/Public/HAL/Runnable.h"
 #include "Containers/Queue.h"
 
-class IFileHandle;
 
 /**
  *
@@ -13,7 +12,8 @@ class CSVACTORHANDLER_API FCsvParserThread : public FRunnable
 {
 public:
 
-	FCsvParserThread(IFileHandle* FileHandle, TQueue<FVector>& Positions, const FString& DelimiterPosition, const FString DelimiterCoordinate);
+	FCsvParserThread(const FString& FilePath, TQueue<FVector>& Positions, const FString& DelimiterPosition, const FString DelimiterCoordinate);
+	virtual ~FCsvParserThread();
 
 	virtual uint32 Run() override;
 
@@ -22,8 +22,10 @@ public:
 
 private:
 
-	IFileHandle* _fileHandle;
+	const FString _filePath;
+	FString _workingFileCopyPath;
 
+	int64 _fileSize;
 	int64 _positionInFile;
 	TArray<uint8> _buffer;
 
@@ -34,6 +36,8 @@ private:
 
 	bool _keepWorking;
 	float _sleepTime;
+
+	IPlatformFile& _platformFile;
 
 	void FillQueue();
 };

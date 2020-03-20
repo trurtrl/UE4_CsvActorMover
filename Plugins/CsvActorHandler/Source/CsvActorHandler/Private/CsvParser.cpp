@@ -15,26 +15,45 @@
 #elif PLATFORM_LUMIN
 #include "Core/Public/Lumin/LuminPlatformProcess.h"
 #endif
+#include "GenericPlatform/GenericPlatformFile.h"
+#include "HAL/PlatformFilemanager.h"
+#include "Misc/Paths.h"
 
 
-FCsvParserThread::FCsvParserThread(IFileHandle* FileHandle, TQueue<FVector>& Positions, const FString& DelimiterPosition, const FString DelimiterCoordinate)
-	: _fileHandle(FileHandle)
+FCsvParserThread::FCsvParserThread(const FString& FilePath, TQueue<FVector>& Positions, const FString& DelimiterPosition, const FString DelimiterCoordinate)
+	: _filePath(FilePath)
+	, _fileSize(0)
 	, _positionInFile(0)
 	, _positions(Positions)
 	, _delimiterPosition(DelimiterPosition)
 	, _delimiterCoordinate(DelimiterCoordinate)
 	, _keepWorking(true)
 	, _sleepTime(0.01f)
+	, _platformFile(FPlatformFileManager::Get().GetPlatformFile())
 {
+	FString fileCopyName = "copy.csv";
+	_workingFileCopyPath = IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*FPaths::Combine(FPaths::ProjectSavedDir(), fileCopyName));
+}
 
+FCsvParserThread::~FCsvParserThread()
+{
+	_platformFile.DeleteFile(*_workingFileCopyPath);
 }
 
 uint32 FCsvParserThread::Run()
 {
 	while (_keepWorking)
 	{
-		if (_fileHandle->Size() > _positionInFile)
-			FillQueue();
+		if (_platformFile.FileSize(*_filePath) > _fileSize)
+		{
+			if (_platformFile.FileExists(*_workingFileCopyPath))
+				_platformFile.DeleteFile(*_workingFileCopyPath);
+			if (_platformFile.CopyFile(*_workingFileCopyPath, *_filePath))
+			{
+				FillQueue();
+				_fileSize = _platformFile.FileSize(*_workingFileCopyPath);
+			}
+		}
 
 		FPlatformProcess::Sleep(_sleepTime);
 	}
@@ -49,11 +68,16 @@ void FCsvParserThread::Finish()
 
 void FCsvParserThread::FillQueue()
 {
-	int64 bytesToRead = _fileHandle->Size() - _positionInFile;
+	TSharedPtr<IFileHandle> fileHandle = MakeShareable(_platformFile.OpenRead(*_workingFileCopyPath));
+	if (!fileHandle)
+		return;
+
+	int64 bytesToRead = fileHandle->Size() - _positionInFile;
 	if (_buffer.Num() < bytesToRead)
 		_buffer.SetNum(bytesToRead);
 
-	if (_fileHandle->Read(_buffer.GetData(), bytesToRead))
+	fileHandle->Seek(_positionInFile);
+	if (fileHandle->Read(_buffer.GetData(), bytesToRead))
 	{
 		FString result;
 		FFileHelper::BufferToString(result, _buffer.GetData(), bytesToRead);

@@ -35,9 +35,7 @@ bool UCsvMovementController::Init(const FString& ActorTag, const FString& FilePa
 	KillParserThread();
 	_positions.Empty();
 
-	IFileHandle* fileHandle = platformFile.OpenRead(*FilePath);
-
-	_parserThread = MakeShared<FCsvParserThread>(fileHandle, _positions, DelimiterPosition, DelimiterCoordinate);
+	_parserThread = MakeShared<FCsvParserThread>(FilePath, _positions, DelimiterPosition, DelimiterCoordinate);
 	FString name = "Parser thread";
 	FRunnableThread* thread = FRunnableThread::Create(_parserThread.Get(), *name);
 	_runnableThread = MakeShareable(thread);
