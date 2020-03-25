@@ -9,24 +9,32 @@
 #include "CsvActorHandler/Private/CsvParser.h"
 #include "Runtime/Core/Public/HAL/RunnableThread.h"
 #include "Kismet/GameplayStatics.h"
+#include "Camera/CameraComponent.h"
 
 
-bool UCsvMovementController::Init(const FString& ActorTag, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate)
+bool UCsvMovementController::InitWithTag(const FString& ActorTag, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate)
 {
-	_camera = nullptr;
+	_actor = nullptr;
 	if (GetOuter())
 	{
 		TArray<AActor*> actors;
 		UGameplayStatics::GetAllActorsWithTag(GetOuter(), FName(*ActorTag), actors);
 		if (actors.Num())
-			_camera = actors[0];			
+			_actor = actors[0];			
 	}
 
+	return InitWithActor(_actor, FilePath, DelimiterPosition, DelimiterCoordinate);
+}
+
+bool UCsvMovementController::InitWithActor(AActor* Actor, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate)
+{
+	_actor = Actor;
+
 	IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
-	if (!platformFile.FileExists(*FilePath) || !_camera)
+	if (!platformFile.FileExists(*FilePath) || !_actor || !GetOuter())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("There is no camera with tag %s or the file %s doesn't exist"), *ActorTag, *FilePath)
-		return false;
+		UE_LOG(LogTemp, Warning, TEXT("There is no camera or the file %s doesn't exist"), *FilePath)
+			return false;
 	}
 
 	FTimerManager& timermanager = GetOuter()->GetWorld()->GetTimerManager();
@@ -39,6 +47,8 @@ bool UCsvMovementController::Init(const FString& ActorTag, const FString& FilePa
 	FString name = "Parser thread";
 	FRunnableThread* thread = FRunnableThread::Create(_parserThread.Get(), *name);
 	_runnableThread = MakeShareable(thread);
+
+	_cameraComponent = _actor->FindComponentByClass<UCameraComponent>();
 
 	return true;
 }
@@ -61,13 +71,17 @@ void UCsvMovementController::KillParserThread()
 	_runnableThread.Reset();
 }
 
-void UCsvMovementController::Start(int32 Frequency, bool InLoop)
+void UCsvMovementController::Start(int32 Frequency, bool InLoop /* = true*/, float CameraFOVMultiplier /* = 0.f*/, float FOVMin /* = 15.f*/, float FOVMax /*= 180.f*/)
 {
+	_cameraFOVMultiplier = CameraFOVMultiplier;
+	_FOVMin = FOVMin;
+	_FOVMax = FOVMax;
+
 	if (Frequency > 0 && GetOuter())
 	{
 		FTimerManager& timerManager = GetOuter()->GetWorld()->GetTimerManager();
-		float frequency = 1.0f / Frequency;
-		timerManager.SetTimer(_positionExracterHandle, this, &UCsvMovementController::SetNewCameraPosition, frequency, InLoop, frequency);
+		float rate = 1.0f / Frequency;
+		timerManager.SetTimer(_positionExracterHandle, this, &UCsvMovementController::SetNewActorPosition, rate, InLoop, rate);
 	}
 }
 
@@ -89,8 +103,14 @@ void UCsvMovementController::UnPause()
 		GetOuter()->GetWorld()->GetTimerManager().UnPauseTimer(_positionExracterHandle);
 }
 
-void UCsvMovementController::SetNewCameraPosition()
+void UCsvMovementController::SetNewActorPosition()
 {
-	if (_positions.Dequeue(_nextPosition) && _camera)
-		_camera->SetActorLocation(_nextPosition);
+	float prevX = _nextPosition.X;
+	if (_positions.Dequeue(_nextPosition) && _actor)
+	{
+		_actor->SetActorLocation(_nextPosition);
+
+		if (_cameraComponent && !FMath::IsNearlyZero(_cameraFOVMultiplier))
+			_cameraComponent->SetFieldOfView(FMath::Clamp(_cameraFOVMultiplier * (_nextPosition.X - prevX) + _cameraComponent->FieldOfView, _FOVMin, _FOVMax));
+	}
 }

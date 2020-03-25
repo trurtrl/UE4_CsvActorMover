@@ -9,6 +9,7 @@
 #include "CsvMovementController.generated.h"
 
 class FCsvParserThread;
+class UCameraComponent;
 
 /**
  * 
@@ -19,12 +20,14 @@ class CSVACTORHANDLER_API UCsvMovementController : public UObject
 	GENERATED_BODY()
 
 public:
+	
+	UFUNCTION(BlueprintCallable)
+	bool InitWithTag(const FString& ActorTag, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate);
+	UFUNCTION(BlueprintCallable)
+	bool InitWithActor(AActor* Actor, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate);
 
 	UFUNCTION(BlueprintCallable)
-	bool Init(const FString& ActorTag, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate);
-
-	UFUNCTION(BlueprintCallable)
-	void Start(int32 Frequency, bool InLoop = true);
+	void Start(int32 Frequency, bool InLoop = true, float CameraFOVMultiplier = 0.f, float FOVMin = 15.f, float FOVMax = 180.f);
 	UFUNCTION(BlueprintCallable)
 	void Stop();
 	UFUNCTION(BlueprintCallable)
@@ -37,10 +40,16 @@ public:
 private:
 
 	UPROPERTY()
-	AActor* _camera;
+	AActor* _actor;
+	UPROPERTY()
+	UCameraComponent* _cameraComponent;
 
 	TSharedPtr<FRunnableThread> _runnableThread; 
 	TSharedPtr<FCsvParserThread> _parserThread;
+
+	float _cameraFOVMultiplier;
+	float _FOVMin;
+	float _FOVMax;
 
 	FVector _nextPosition;
 	TQueue<FVector> _positions;
@@ -48,7 +57,7 @@ private:
 	FTimerHandle _positionExracterHandle;
 
 	UFUNCTION()
-	void SetNewCameraPosition();
+	void SetNewActorPosition();
 
 	void KillParserThread();
 };
