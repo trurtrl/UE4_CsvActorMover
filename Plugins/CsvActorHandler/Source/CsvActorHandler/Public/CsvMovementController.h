@@ -27,7 +27,7 @@ public:
 	bool InitWithActor(AActor* Actor, const FString& FilePath, const FString& DelimiterPosition, const FString DelimiterCoordinate);
 
 	UFUNCTION(BlueprintCallable)
-	void Start(int32 Frequency, bool InLoop = true, float CameraFOVMultiplier = 0.f, float FOVMin = 15.f, float FOVMax = 180.f);
+	void Start(int32 Frequency, bool InLoop = true, float CameraFOVmultiplier = 0.f, float FOV = 90.f, float FOVmin = 15.f, float FOVmax = 170.f);
 	UFUNCTION(BlueprintCallable)
 	void Stop();
 	UFUNCTION(BlueprintCallable)

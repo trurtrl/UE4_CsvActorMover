@@ -71,11 +71,14 @@ void UCsvMovementController::KillParserThread()
 	_runnableThread.Reset();
 }
 
-void UCsvMovementController::Start(int32 Frequency, bool InLoop /* = true*/, float CameraFOVMultiplier /* = 0.f*/, float FOVMin /* = 15.f*/, float FOVMax /*= 180.f*/)
+void UCsvMovementController::Start(int32 Frequency, bool InLoop /* = true*/, float CameraFOVMultiplier /* = 0.f*/, float FOV /*= 90.f*/, float FOVMin /* = 15.f*/, float FOVMax /*= 180.f*/)
 {
 	_cameraFOVMultiplier = CameraFOVMultiplier;
 	_FOVMin = FOVMin;
 	_FOVMax = FOVMax;
+
+	if (_cameraComponent)
+		_cameraComponent->SetFieldOfView(FOV);
 
 	if (Frequency > 0 && GetOuter())
 	{
